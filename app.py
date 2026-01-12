@@ -29,14 +29,30 @@ def load_rock_model():
     return tf.keras.models.load_model(output)
 
 # --- Custom CSS for Styling ---
-st.markdown("""
-    <style>
-    .main { background-color: #f5f7f9; }
-    .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #004b87; color: white; font-weight: bold; }
-    .designer-credit { font-size: 1.1rem; color: #004b87; font-weight: bold; border-left: 4px solid #004b87; padding-left: 10px; }
-    .result-card { background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0px 4px 6px rgba(0,0,0,0.1); }
-    </style>
-    """, unsafe_content_type=True)
+# --- Custom CSS for Styling (Fixed Version) ---
+custom_css = """
+<style>
+    .main { 
+        background-color: #f5f7f9; 
+    }
+    .stButton>button { 
+        width: 100%; 
+        border-radius: 5px; 
+        height: 3em; 
+        background-color: #004b87; 
+        color: white; 
+        font-weight: bold; 
+    }
+    .designer-credit { 
+        font-size: 1.1rem; 
+        color: #004b87; 
+        font-weight: bold; 
+        border-left: 4px solid #004b87; 
+        padding-left: 10px; 
+    }
+</style>
+"""
+st.markdown(custom_css, unsafe_allow_html=True)
 
 # --- Header Section ---
 col1, col2 = st.columns([3, 1])
