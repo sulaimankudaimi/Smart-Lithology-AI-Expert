@@ -2,5 +2,5 @@ streamlit
 tensorflow-cpu
 Pillow
 numpy
+gdown
 requests
-matplotlib
