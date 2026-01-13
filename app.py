@@ -5,34 +5,31 @@ import numpy as np
 import os
 import gdown
 
-# --- 1. إعدادات الصفحة الاحترافية ---
+# --- 1. Page Configuration ---
 st.set_page_config(
     page_title="Global Rock & Mineral Expert | AI",
     page_icon="💎",
     layout="wide"
 )
 
-# --- 2. وظيفة تحميل الموديل الذكي ---
+# --- 2. Intelligent Model Loader ---
 @st.cache_resource
 def load_rock_model():
-    # معرف الملف الصحيح من جوجل درايف
     file_id = '1WtLpd9NpOmJ3o0bpUYEtE-1eH6jzPNTS'
     url = f'https://drive.google.com/uc?id={file_id}'
     output = 'rock_model.h5'
     
-    # تحميل الموديل إذا لم يكن موجوداً أو كان تالفاً
     if not os.path.exists(output) or os.path.getsize(output) < 1000000:
-        with st.spinner('Synchronizing AI Engine with Cloud... Please wait.'):
+        with st.spinner('Downloading AI Engine from Cloud...'):
             try:
-                # التحميل المباشر لضمان سلامة بصمة الملف (File Signature)
                 gdown.download(url, output, quiet=False)
             except Exception as e:
-                st.error(f"Cloud Sync Failed: {e}")
+                st.error(f"Download Error: {e}")
     
-    # تحميل الموديل مع معالجة أخطاء الأبعاد الشائعة
+    # تحميل الموديل بدون تجميع (لحل مشاكل الأبعاد)
     return tf.keras.models.load_model(output, compile=False)
 
-# --- 3. تنسيق الواجهة (Professional CSS) ---
+# --- 3. Professional Styling ---
 st.markdown("""
 <style>
     .main { background-color: #f8f9fa; }
@@ -47,80 +44,73 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. الهيدر (Header) ---
-h_col1, h_col2 = st.columns([3, 1])
-with h_col1:
+# --- 4. Header ---
+h1, h2 = st.columns([3, 1])
+with h1:
     st.title("🔬 Global Rock & Mineral Expert AI")
-    st.markdown("#### *Intelligent Lithology Classification for Petroleum Operations*")
-with h_col2:
+    st.markdown("#### *Advanced Lithology Classification System for SPC Operations*")
+with h2:
     st.markdown('<div class="designer-credit">Designed & Developed by:<br>Eng. Solaiman Kudaimi</div>', unsafe_allow_html=True)
 
 st.divider()
 
-# --- 5. منطقة العمل الرئيسية (Main Layout) ---
+# --- 5. Main Application Logic ---
 col_left, col_right = st.columns([1, 1], gap="large")
 
 with col_left:
-    st.markdown("### 📂 Input Section")
-    st.info("Upload a high-quality image of the sample (Cuttings or Cores) for AI diagnostics.")
-    uploaded_file = st.file_uploader("Upload Rock Image", type=["jpg", "jpeg", "png"])
-    
-    if uploaded_file is not None:
+    st.markdown("### 📂 Input Sample")
+    uploaded_file = st.file_uploader("Upload Image (Cuttings/Cores)", type=["jpg", "jpeg", "png"])
+    if uploaded_file:
         image = Image.open(uploaded_file)
-        st.image(image, caption="Sample Ready for Neural Analysis", use_container_width=True)
+        st.image(image, caption="Uploaded Sample", use_container_width=True)
 
 with col_right:
-    st.markdown("### 📊 Diagnostic Intelligence")
-    if uploaded_file is not None:
+    st.markdown("### 📊 AI Analysis")
+    if uploaded_file:
         try:
-            # تحميل الموديل
             model = load_rock_model()
-            
-            with st.spinner('Running Feature Extraction & Classification...'):
-                # --- معالجة الصورة بدقة لحل مشكلة ValueError ---
+            with st.spinner('Analyzing...'):
+                # معالجة الصورة
                 img = image.resize((224, 224))
                 img_array = np.array(img)
-                
-                # إزالة قناة الـ Alpha إذا كانت موجودة (RGBA to RGB)
-                if img_array.shape[-1] == 4:
-                    img_array = img_array[..., :3]
-                
-                # التطبيع (Normalization)
+                if img_array.shape[-1] == 4: img_array = img_array[..., :3]
                 img_array = img_array.astype('float32') / 255.0
-                
-                # إضافة بعد الدفعة (Expand Dimensions)
                 img_array = np.expand_dims(img_array, axis=0)
                 
-                # التنبؤ (Prediction)
-                predictions = model.predict(img_array)
+                # --- حل مشكلة dense_1 (استدعاء الموديل مباشرة كدالة) ---
+                # نستخدم training=False لضمان عدم تفعيل Dropout أو BatchNormalization
+                predictions = model(img_array, training=False)
                 
-                # قائمة الأصناف بالترتيب
+                # تحويل النتيجة إلى مصفوفة numpy للتعامل معها
+                if hasattr(predictions, "numpy"):
+                    predictions = predictions.numpy()
+                
+                # التأكد من الحصول على آخر طبقة (في حال كان الموديل يعيد مخرجات متعددة)
+                if isinstance(predictions, list):
+                    predictions = predictions[-1]
+
                 labels = ['Igneous Rock', 'Metamorphic Rock', 'Sedimentary Rock', 'Mineral Sample']
+                idx = np.argmax(predictions[0])
+                conf = np.max(predictions[0]) * 100
                 
-                idx = np.argmax(predictions)
-                conf = np.max(predictions) * 100
-                
-                # عرض النتائج بشكل احترافي
-                st.success("Analysis Successfully Completed")
-                st.metric(label="Predicted Classification", value=f"{labels[idx]}")
-                st.write(f"**Confidence Score:** {conf:.2f}%")
+                # العرض
+                st.success("Analysis Completed")
+                st.metric(label="Classification", value=f"{labels[idx]}")
+                st.write(f"**Confidence:** {conf:.2f}%")
                 st.progress(int(conf))
                 
-                # ملاحظات فنية بترولية
-                with st.expander("🔍 Geological Technical Analysis"):
-                    if idx == 2: # Sedimentary
-                        st.write("Target identified as **Sedimentary**. This is of paramount importance for SPC reservoir characterization and potential hydrocarbon trapping.")
-                    elif idx == 0: # Igneous
-                        st.write("Crystalline structure detected. Matches **Igneous** lithology signatures.")
+                with st.expander("🔍 Technical Notes"):
+                    if idx == 2:
+                        st.write("Identified as **Sedimentary**. Essential for reservoir characterization.")
                     else:
-                        st.write("Advanced mineralogical features detected. Data consistent with trained geological patterns.")
-
+                        st.write("Target identified based on trained geological patterns.")
+                        
         except Exception as e:
             st.error(f"Operational Error: {e}")
-            st.warning("Hint: Ensure the model architecture matches the input shape (224x224x3).")
+            st.info("Technical Note: This error usually relates to model input/output layer mismatch.")
     else:
-        st.warning("System Status: Awaiting Image Input...")
+        st.warning("Awaiting sample input...")
 
-# --- 6. الفوتر (Footer) ---
+# --- 6. Footer ---
 st.divider()
-st.markdown("<center><p style='color: #888;'>All Technical Rights Reserved © 2026 | <b>Eng. Solaiman Kudaimi</b><br>Specially developed for the <b>Syrian Petroleum Company (SPC)</b></p></center>", unsafe_allow_html=True)
+st.markdown("<center><p style='color: #888;'>All Rights Reserved © 2026 | <b>Eng. Solaiman Kudaimi</b><br>Syrian Petroleum Company (SPC)</p></center>", unsafe_allow_html=True)
