@@ -6,22 +6,29 @@ import os
 import gdown
 
 # --- 1. Page Configuration ---
-st.set_page_config(page_title="Global Rock & Mineral Expert | AI", page_icon="💎", layout="wide")
+st.set_page_config(
+    page_title="Global Rock & Mineral Expert | AI",
+    page_icon="💎",
+    layout="wide"
+)
 
-# --- 2. Load Model Function ---
+# --- 2. Load Model Function (Using Base Model ID) ---
 @st.cache_resource
 def load_rock_model():
-    file_id = '1WtLpd9NpOmJ3o0bpUYEtE-1eH6jzPNTS'
+    # معرف الملف الأساسي الجديد الذي أرسلته
+    file_id = '1tOsn8F5Bspr4xYiM5LmoA4Dj0EAbIJ8v'
     url = f'https://drive.google.com/uc?id={file_id}'
-    output = 'rock_model.h5'
+    output = 'base_rock_model.h5'
     
     if not os.path.exists(output) or os.path.getsize(output) < 1000000:
-        with st.spinner('Downloading Model...'):
-            gdown.download(url, output, quiet=False)
+        with st.spinner('Downloading Base AI Model for Testing...'):
+            try:
+                gdown.download(url, output, quiet=False)
+            except Exception as e:
+                st.error(f"Download Error: {e}")
     
-    # تحميل الموديل مع تجاهل التهيئة الأصلية لحل مشكلة dense_1
-    model = tf.keras.models.load_model(output, compile=False)
-    return model
+    # تحميل الموديل
+    return tf.keras.models.load_model(output, compile=False)
 
 # --- 3. Custom CSS ---
 st.markdown("""
@@ -36,13 +43,13 @@ st.markdown("""
 h1, h2 = st.columns([3, 1])
 with h1:
     st.title("🔬 Global Rock & Mineral Expert AI")
-    st.markdown("#### *Advanced Geological Classification for SPC*")
+    st.markdown("#### *Basic Testing Interface - SPC Project*")
 with h2:
     st.markdown('<div class="designer-credit">Designed & Developed by:<br>Eng. Solaiman Kudaimi</div>', unsafe_allow_html=True)
 
 st.divider()
 
-# --- 5. Logic ---
+# --- 5. Logic Section ---
 col_left, col_right = st.columns([1, 1], gap="large")
 
 with col_left:
@@ -53,11 +60,11 @@ with col_left:
         st.image(image, caption="Uploaded Sample", use_container_width=True)
 
 with col_right:
-    st.markdown("### 📊 AI Diagnosis")
+    st.markdown("### 📊 AI Diagnostic Results")
     if uploaded_file:
         try:
             model = load_rock_model()
-            with st.spinner('Analyzing...'):
+            with st.spinner('Processing...'):
                 # معالجة الصورة
                 img = image.resize((224, 224))
                 img_array = np.array(img)
@@ -65,38 +72,27 @@ with col_right:
                 img_array = img_array.astype('float32') / 255.0
                 img_array = np.expand_dims(img_array, axis=0)
 
-                # --- الحل القاطع لمشكلة الطبقة dense_1 ---
-                # نستخدم الموديل كدالة ونحدد بوضوح أننا في وضع "التدريب = خطأ" 
-                # ونمرر المدخل كـ Tensor واحد لفك الاشتباك
-                input_tensor = tf.convert_to_tensor(img_array)
-                predictions = model(input_tensor, training=False)
-
-                # التأكد من تحويل النتيجة لمصفوفة بسيطة
-                if isinstance(predictions, list) or isinstance(predictions, tuple):
-                    predictions = predictions[0]
+                # التنبؤ البسيط (Standard Prediction)
+                predictions = model.predict(img_array)
                 
-                preds_np = predictions.numpy() if hasattr(predictions, 'numpy') else predictions
-                
-                # إذا كانت الأبعاد (None, 7, 7, 1280) فهذا يعني أن الطبقة الأخيرة لم تُضغط (Pooling)
-                # سنقوم بضغطها يدوياً هنا برمجياً لإنقاذ الموقف
-                if len(preds_np.shape) > 2:
-                    preds_np = np.mean(preds_np, axis=(1, 2))
-
+                # قائمة الأصناف الافتراضية (تأكد من مطابقتها للموديل الأساسي)
                 labels = ['Igneous Rock', 'Metamorphic Rock', 'Sedimentary Rock', 'Mineral Sample']
-                idx = np.argmax(preds_np[0])
-                conf = np.max(preds_np[0]) * 100
                 
-                # النتائج
-                st.success("Analysis Completed")
+                idx = np.argmax(predictions[0])
+                conf = np.max(predictions[0]) * 100
+                
+                # عرض النتائج
+                st.success("Analysis Completed Successfully")
                 st.metric(label="Classification", value=f"{labels[idx]}")
-                st.write(f"**Confidence Score:** {conf:.2f}%")
+                st.write(f"**Confidence:** {conf:.2f}%")
                 st.progress(int(conf))
-
+                
         except Exception as e:
             st.error(f"Technical Error: {e}")
-            st.info("The model architecture requires an explicit Pooling layer before prediction.")
+            st.info("Note: If 'dense_1' error persists, the Base Model might also have architectural complexity.")
     else:
-        st.warning("Awaiting input...")
+        st.warning("Awaiting sample input...")
 
+# --- 6. Footer ---
 st.divider()
-st.markdown("<center><p style='color: #888;'>All Rights Reserved © 2026 | <b>Eng. Solaiman Kudaimi</b></p></center>", unsafe_allow_html=True)
+st.markdown("<center><p style='color: #888;'>All Technical Rights Reserved © 2026 | <b>Eng. Solaiman Kudaimi</b></p></center>", unsafe_allow_html=True)
